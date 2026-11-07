@@ -22,7 +22,8 @@ def load_paper_table4() -> dict[tuple[str, str], dict]:
     with (PAPER / "table4_sensitivity_by_dataset.csv").open() as f:
         for row in csv.DictReader(f):
             out[(row["hf_id"], row["dataset"])] = row
-            out[(row["hf_id"].split()[0], row["dataset"])] = row  # "gpt-5-nano (OpenAI API)" -> "gpt-5-nano"
+            if row["hf_id"].strip():
+                out[(row["hf_id"].split()[0], row["dataset"])] = row  # "gpt-5-nano (OpenAI API)" -> "gpt-5-nano"
     return out
 
 

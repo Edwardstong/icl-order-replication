@@ -1,0 +1,73 @@
+{
+  "model": "gpt-5-nano",
+  "dataset": "ag_news",
+  "paper_dataset": "ag_news",
+  "kind": "classification",
+  "M": 10,
+  "P": 10,
+  "n_test": 500,
+  "k": 8,
+  "seed": 0,
+  "tag": "",
+  "ddof": 0,
+  "device": "openai",
+  "dtype": "api",
+  "batch_size": 16,
+  "ordering": 0.030613798402936248,
+  "selection": 0.024339140657032993,
+  "r": 0.795038248331137,
+  "mean_acc": 0.76906,
+  "run_info": {
+    "seconds": 1159.5046560764313,
+    "mean_prefix_tokens": 519.1,
+    "multi_token_labels": [],
+    "evaluations": 50000
+  },
+  "data_meta": {
+    "dataset": "ag_news",
+    "kind": "classification",
+    "hf_id": "fancyzhx/ag_news",
+    "hf_config": null,
+    "k": 8,
+    "verbalizers": [
+      "World",
+      "Sports",
+      "Business",
+      "Technology"
+    ],
+    "answer_key": "Topic",
+    "n_dev": 1000,
+    "n_test": 500,
+    "n_demo_pool": 120000,
+    "dev_source_split": "test",
+    "test_source_split": "test",
+    "demo_source_split": "train",
+    "seed": 0
+  },
+  "env": {
+    "python": "3.13.18",
+    "torch": "2.15.0",
+    "transformers": "5.22.2",
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O"
+  },
+  "backend": "openai",
+  "api": {
+    "model": "gpt-5-nano",
+    "reasoning_effort": "minimal",
+    "max_completion_tokens": 64,
+    "workers": 24,
+    "cache": "/Users/ac2/Documents/icl-order-replication/results/openai_cache/gpt-5-nano.sqlite",
+    "requests": 40569,
+    "cache_hits": 9431,
+    "retries": 0,
+    "prompt_tokens": 22353124,
+    "cached_prompt_tokens": 0,
+    "completion_tokens": 412938,
+    "reasoning_tokens": 0,
+    "unmatched": 238,
+    "alias_matched": 247,
+    "budget_raised": 0,
+    "estimated_cost_usd": 1.2828313999999998,
+    "note": "label read from generated text (match_label); prefix lengths are chars/4 estimates"
+  }
+}

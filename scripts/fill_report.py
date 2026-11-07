@@ -43,7 +43,7 @@ def load_runs(kind: str, include_tags: bool) -> list[dict]:
             continue
         s["folder"] = f.parent.name
         runs.append(s)
-    runs.sort(key=lambda s: (s["model"], s["dataset"]))
+    runs.sort(key=lambda s: (s.get("backend") != "openai", s["model"], s["dataset"]))
     return runs
 
 
@@ -52,7 +52,8 @@ def paper_cells() -> dict[tuple[str, str], tuple[float, float]]:
     with open(PAPER / "table4_sensitivity_by_dataset.csv", newline="") as fh:
         for r in csv.DictReader(fh):
             cells[(r["hf_id"], r["dataset"])] = (float(r["ordering"]), float(r["selection"]))
-            cells[(r["hf_id"].split()[0], r["dataset"])] = cells[(r["hf_id"], r["dataset"])]
+            if r["hf_id"].strip():  # Gemma-3 27B has no id in the paper
+                cells[(r["hf_id"].split()[0], r["dataset"])] = cells[(r["hf_id"], r["dataset"])]
     return cells
 
 
@@ -239,10 +240,12 @@ def build_block(sens: list[dict], search: list[dict], paper: dict, figs: dict[st
         return "\n".join(out)
 
     env = (sens or search)[0]
+    hw = sorted({(f"{s.get('device')} / {str(s.get('dtype')).replace('torch.', '')}"
+                  if s.get("backend") != "openai" else "OpenAI API") for s in sens + search})
     out += [
-        f"Runs finished so far: {len(sens)} Section 3 cell(s), {len(search)} Section 4 cell(s). "
-        f"Hardware: {env.get('device')} / {str(env.get('dtype')).replace('torch.', '')}; "
-        f"torch {env['env']['torch']}, transformers {env['env']['transformers']}, Python {env['env']['python']}.",
+        f"Runs finished: {len(sens)} Section 3 cell(s), {len(search)} Section 4 cell(s). "
+        f"Hardware: {'; '.join(hw)}. Software: torch {env['env']['torch']}, transformers "
+        f"{env['env']['transformers']}, Python {env['env']['python']}.",
         "",
     ]
 
@@ -262,6 +265,22 @@ def build_block(sens: list[dict], search: list[dict], paper: dict, figs: dict[st
         if b:
             sent.append(f"In {a} of {b} cells our r falls on the same side of 1 as the paper's.")
         out += [" ".join(sent), ""]
+        api_runs = [s for s in sens if s.get("api")]
+        if api_runs:
+            out.append("API cells:")
+            for s in api_runs:
+                a = s["api"]
+                cost = a.get("estimated_cost_usd")
+                out.append(
+                    f"- {short(s['model'])} on {s['dataset']}: {a['requests'] + a['cache_hits']:,} prompts "
+                    f"({a['requests']:,} requests, {a['cache_hits']:,} from cache), {a['unmatched']:,} answers named no label "
+                    f"({100 * a['unmatched'] / max(1, a['requests'] + a['cache_hits']):.1f}%), "
+                    f"{a.get('alias_matched', 0):,} matched through an alias, {a['reasoning_tokens']:,} reasoning tokens, "
+                    f"{s['run_info']['seconds'] / 60:.0f} min, "
+                    + ("cost unknown" if cost is None else f"about ${cost:.2f} at list prices")
+                    + f" (reasoning effort {a.get('reasoning_effort')}, {a.get('workers')} workers)."
+                )
+            out.append("")
         if figs.get("sens"):
             out += ["![Ordering vs selection sensitivity](report/figures/sensitivity.png)", ""]
         sizes = {(s["M"], s["P"], s["n_test"]) for s in sens}
@@ -288,7 +307,8 @@ def build_block(sens: list[dict], search: list[dict], paper: dict, figs: dict[st
         if figs.get("curve_dev"):
             out += ["![Accuracy vs dev-set size](report/figures/curve_over_dev.png)", ""]
     else:
-        out += ["*No Section 4 cell finished yet.*", ""]
+        out += ["*Not run in this replication. The paper does not run Section 4 on GPT-5-nano; "
+                "`scripts/run_search.py` runs it for any model.*", ""]
 
     out += ["Run folders: " + ", ".join(f"`{s['folder']}`" for s in sens + search) + ".", END]
     return "\n".join(out)
