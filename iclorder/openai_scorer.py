@@ -19,6 +19,7 @@ import json
 import os
 import re
 import sqlite3
+import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -90,12 +91,29 @@ def _usage_dict(resp) -> dict[str, int]:
     }
 
 
+KEYCHAIN_SERVICE = "icl-order-replication-openai"
+
+
+def _api_key_from_keychain(service: str = KEYCHAIN_SERVICE) -> str | None:
+    """macOS Keychain fallback. Store the key once, hidden at the prompt, with
+        security add-generic-password -a "$USER" -s icl-order-replication-openai -w
+    """
+    try:
+        out = subprocess.run(["security", "find-generic-password", "-s", service, "-w"],
+                             capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return (out.stdout.strip() or None) if out.returncode == 0 else None
+
+
 def _make_client():
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise SystemExit("OPENAI_API_KEY is not set. Export it in the shell that runs the script; "
-                         "it is read by the OpenAI SDK and never stored by this code.")
+    key = os.environ.get("OPENAI_API_KEY") or _api_key_from_keychain()
+    if not key:
+        raise SystemExit("No OpenAI key: export OPENAI_API_KEY, or store it in the macOS Keychain with\n"
+                         '  security add-generic-password -a "$USER" -s icl-order-replication-openai -w\n'
+                         "The key is read by the OpenAI SDK and never written by this code.")
     import openai
-    return openai.OpenAI()
+    return openai.OpenAI(api_key=key)
 
 
 class _Cache:

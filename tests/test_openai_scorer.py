@@ -4,6 +4,7 @@ import types
 import numpy as np
 import pytest
 
+import iclorder.openai_scorer as mod
 from iclorder.openai_scorer import OpenAIScorer, PrefixText, match_label, price_for
 
 LABELS = ["World", "Sports", "Business", "Technology"]
@@ -126,3 +127,22 @@ def test_no_reasoning_effort_when_disabled(tmp_path):
     sc = OpenAIScorer("gpt-4.1-mini", cache_dir=tmp_path, client=client, reasoning_effort=None)
     sc.complete("x", "sys", 8)
     assert "reasoning_effort" not in client.calls[0]
+
+
+def test_key_lookup_env_then_keychain(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr(mod, "_api_key_from_keychain", lambda service=None: None)
+    with pytest.raises(SystemExit):
+        mod._make_client()
+    monkeypatch.setattr(mod, "_api_key_from_keychain", lambda service=None: "sk-test-from-keychain")
+    client = mod._make_client()
+    assert client.api_key == "sk-test-from-keychain"
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-from-env")
+    assert mod._make_client().api_key == "sk-test-from-env"
+
+
+def test_keychain_lookup_handles_missing_tool(monkeypatch):
+    def boom(*a, **k):
+        raise OSError("no security tool")
+    monkeypatch.setattr(mod.subprocess, "run", boom)
+    assert mod._api_key_from_keychain() is None
