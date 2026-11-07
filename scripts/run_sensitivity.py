@@ -13,12 +13,11 @@ import json
 
 import numpy as np
 
-from _common import DATA_DIR, RESULTS_DIR, add_model_args, dump, env_info, model_slug
+from _common import DATA_DIR, RESULTS_DIR, add_model_args, dump, env_info, make_scorer, model_slug, scorer_extra
 from iclorder.data import load_materialized, sample_demo_sets
 from iclorder.metrics import accuracy_matrix, sensitivities
 from iclorder.prompts import random_permutations
 from iclorder.runner import evaluate_grid
-from iclorder.scorer import CachedScorer
 from iclorder.specs import get_spec
 
 
@@ -39,7 +38,7 @@ def main() -> None:
 
     out_dir = RESULTS_DIR / "sensitivity" / (f"{model_slug(args.model)}__{spec.name}" + (f"__{args.tag}" if args.tag else ""))
     out_dir.mkdir(parents=True, exist_ok=True)
-    scorer = CachedScorer(args.model, device=args.device, dtype=args.dtype, batch_size=args.batch_size)
+    scorer = make_scorer(args)
     print(f"model loaded in {scorer.load_seconds:.1f}s on {scorer.device} ({scorer.dtype}); "
           f"M={args.M} P={args.P} N={len(test)} k={spec.k}")
 
@@ -56,10 +55,15 @@ def main() -> None:
         "model": args.model, "dataset": spec.name, "paper_dataset": spec.paper_name, "kind": spec.kind,
         "M": args.M, "P": args.P, "n_test": len(test), "k": spec.k, "seed": args.seed, "tag": args.tag, "ddof": args.ddof,
         "device": str(scorer.device), "dtype": str(scorer.dtype), "batch_size": args.batch_size,
-        **sens, "run_info": info, "data_meta": meta, "env": env_info(),
+        **sens, "run_info": info, "data_meta": meta, "env": env_info(), **scorer_extra(args, scorer),
     }
     dump(out_dir / "summary.json", summary)
     print(json.dumps({k: summary[k] for k in ("ordering", "selection", "r", "mean_acc")}, indent=2))
+    if "api" in summary:
+        a = summary["api"]
+        cost = a["estimated_cost_usd"]
+        print(f"api: {a['requests']} requests, {a['cache_hits']} cache hits, {a['unmatched']} unmatched answers, "
+              f"est. cost {'unknown' if cost is None else f'${cost:.3f}'}")
     print(f"wrote {out_dir}")
 
 

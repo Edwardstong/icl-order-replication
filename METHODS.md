@@ -17,6 +17,17 @@ run `--tag`, and noting it here. The report lists this table.
 | "Exact match or numeric tolerance" | tolerance not stated | number after `####` if present, else the last number in the continuation; match if abs diff <= 1e-6 + 1e-4 * abs(gold) | `parse.py` |
 | BOS token | not stated | added to the prefix where the tokenizer adds one; never to queries | `scorer.encode_prefix` |
 
+## API backend (`--backend openai`, GPT-5-nano)
+
+| Detail | Paper | Here | Where |
+|---|---|---|---|
+| Prompt format | not stated | chat: system line "Reply with exactly one of these labels and nothing else: <labels>", user message = the same demonstrations-plus-query text as the local backend | `openai_scorer.OpenAIScorer.classification_instruction` |
+| Label reading | not stated | first allowed label mentioned as a whole word in the completion (case and punctuation ignored); no label mentioned counts as wrong and is tallied as `unmatched` | `openai_scorer.match_label` |
+| Decoding | not stated | API default; GPT-5 models accept no temperature, so cells are not bit-reproducible. `reasoning_effort=minimal`, 64 completion tokens for classification | `scripts/_common.py` flags |
+| Generation (GSM8K) | not stated | system line asks for the examples' style and a final `#### <number>` line; the same parser as the local backend | `OpenAIScorer.generation_instruction`, `parse.py` |
+| Caching | n/a | every completion stored by request hash in sqlite; a rerun reuses outputs, so a cell's numbers are stable after its first run | `openai_scorer._Cache` |
+| Cost accounting | n/a | prompt, cached-prompt, completion and reasoning tokens summed from the API's usage field; cost at list prices in `summary.json` | `OpenAIScorer.usage_summary` |
+
 ## Sampling
 
 | Detail | Paper | Here | Where |

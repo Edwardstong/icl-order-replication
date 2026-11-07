@@ -1,0 +1,53 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B",
+  "dataset": "ag_news",
+  "paper_dataset": "ag_news",
+  "kind": "classification",
+  "M": 10,
+  "P": 10,
+  "n_test": 500,
+  "k": 8,
+  "seed": 0,
+  "tag": "",
+  "ddof": 0,
+  "device": "mps",
+  "dtype": "torch.bfloat16",
+  "batch_size": 32,
+  "ordering": 0.017877837240357332,
+  "selection": 0.017374205964252924,
+  "r": 0.9718292951583923,
+  "mean_acc": 0.75424,
+  "run_info": {
+    "seconds": 957.5117609500885,
+    "mean_prefix_tokens": 456.4,
+    "multi_token_labels": [],
+    "evaluations": 50000
+  },
+  "data_meta": {
+    "dataset": "ag_news",
+    "kind": "classification",
+    "hf_id": "fancyzhx/ag_news",
+    "hf_config": null,
+    "k": 8,
+    "verbalizers": [
+      "World",
+      "Sports",
+      "Business",
+      "Technology"
+    ],
+    "answer_key": "Topic",
+    "n_dev": 1000,
+    "n_test": 500,
+    "n_demo_pool": 120000,
+    "dev_source_split": "test",
+    "test_source_split": "test",
+    "demo_source_split": "train",
+    "seed": 0
+  },
+  "env": {
+    "python": "3.13.18",
+    "torch": "2.15.0",
+    "transformers": "5.22.2",
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O"
+  }
+}

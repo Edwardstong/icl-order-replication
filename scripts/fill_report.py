@@ -52,6 +52,7 @@ def paper_cells() -> dict[tuple[str, str], tuple[float, float]]:
     with open(PAPER / "table4_sensitivity_by_dataset.csv", newline="") as fh:
         for r in csv.DictReader(fh):
             cells[(r["hf_id"], r["dataset"])] = (float(r["ordering"]), float(r["selection"]))
+            cells[(r["hf_id"].split()[0], r["dataset"])] = cells[(r["hf_id"], r["dataset"])]
     return cells
 
 

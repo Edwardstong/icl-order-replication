@@ -15,11 +15,10 @@ import json
 
 import numpy as np
 
-from _common import DATA_DIR, RESULTS_DIR, add_model_args, dump, env_info, model_slug
+from _common import DATA_DIR, RESULTS_DIR, add_model_args, dump, env_info, make_scorer, model_slug, scorer_extra
 from iclorder.data import load_materialized, sample_demo_sets
 from iclorder.prompts import random_permutations
 from iclorder.runner import evaluate_grid
-from iclorder.scorer import CachedScorer
 from iclorder.search import aggregates, curve_over_dev_size, curve_over_p
 from iclorder.specs import get_spec
 
@@ -41,7 +40,7 @@ def main() -> None:
 
     out_dir = RESULTS_DIR / "search" / (f"{model_slug(args.model)}__{spec.name}" + (f"__{args.tag}" if args.tag else ""))
     out_dir.mkdir(parents=True, exist_ok=True)
-    scorer = CachedScorer(args.model, device=args.device, dtype=args.dtype, batch_size=args.batch_size)
+    scorer = make_scorer(args)
     print(f"model loaded in {scorer.load_seconds:.1f}s on {scorer.device} ({scorer.dtype}); "
           f"M={args.M} P={args.P} N_dev={len(dev)} N_test={len(test)} k={spec.k}")
 
@@ -63,7 +62,7 @@ def main() -> None:
         **agg,
         "curve_over_p": curve_over_p(dev_c, test_c, [1, 2, 4, 8, 16, 32, 64, 100, 128]),
         "curve_over_dev_size": curve_over_dev_size(dev_c, test_c, [50, 100, 250, 500, 1000]),
-        "run_info": info, "data_meta": meta, "env": env_info(),
+        "run_info": info, "data_meta": meta, "env": env_info(), **scorer_extra(args, scorer),
     }
     dump(out_dir / "summary.json", summary)
     print(json.dumps({k: agg[k] for k in ("highest_dev_pooled", "highest_dev_per_set", "average", "oracle",

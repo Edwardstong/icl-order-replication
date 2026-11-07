@@ -50,11 +50,17 @@ If the team does want that row:
   third-party listings disagree. The backend should request `logprobs` once and fall back to scoring
   by generating the label text and matching it to a label name. The paper does not say how it scored
   GPT-5-nano. Record whatever the team does in METHODS.md.
-- **Not implemented here.** An OpenAI backend would be a new `iclorder/openai_scorer.py` exposing the
-  same `predict`-style interface and reusing `iclorder/prompts.py`, with a Batch-API path (one JSONL
-  of requests per cell, results collected within 24 hours), plus a `--backend openai` flag on the two
-  run scripts. The key lives in the `OPENAI_API_KEY` environment variable of whoever runs it and is
-  never written into the repo.
+- **Implemented as `--backend openai`.** `iclorder/openai_scorer.py` sends the same demonstrations-plus-query
+  text as a chat (a short system line names the allowed labels), reads the label from the generated text,
+  caches every completion in `results/openai_cache/<model>.sqlite` (reruns and resumed runs are free),
+  retries on rate limits, and records requests, tokens, unmatched answers and an estimated cost in
+  `summary.json`. The key is read from `OPENAI_API_KEY` by the SDK and never stored. Smoke first, then full:
+  ```bash
+  .venv/bin/python scripts/run_sensitivity.py --backend openai --model gpt-5-nano --dataset ag_news --M 2 --P 2 --n-test 16 --tag smoke
+  .venv/bin/python scripts/run_sensitivity.py --backend openai --model gpt-5-nano --dataset ag_news --workers 8
+  ```
+  Watch the `unmatched` count in the smoke output: answers that name no label count as wrong, and a
+  high count means the label words or the completion budget need attention, not the model.
 
 ## Why this fits on laptops
 

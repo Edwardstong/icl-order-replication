@@ -58,5 +58,6 @@ both models averages over seven datasets.)
 - Section 4 on DBPedia (about 3 h for 0.5B).
 - GSM8K (generation): build the split here, run on Colab or Kaggle GPU time; shows the
   generation-side r (paper mean 1.46).
-- GPT-5-nano row: about $5 of API credit through the Batch API; needs the backend described in the
-  README's OpenAI section.
+- GPT-5-nano row: `--backend openai --model gpt-5-nano` on the same three datasets, about $5 of API
+  credit at list prices, one to two hours per cell; the smoke command is in the README's OpenAI section.
+  Expect r below 1 on AG News and DBPedia for this model, as in the paper's Table 4.

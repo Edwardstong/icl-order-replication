@@ -6,3 +6,5 @@ __pycache__/
 *.log
 data/
 *.npy
+*.sqlite
+results/openai_cache/
