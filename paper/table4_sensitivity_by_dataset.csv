@@ -1,0 +1,106 @@
+paper_family,size,hf_id,dataset,ordering,selection
+Qwen2.5,0.5B,Qwen/Qwen2.5-0.5B,ag_news,0.04581,0.03704
+Qwen2.5,0.5B,Qwen/Qwen2.5-0.5B,dbpedia,0.00835,0.01783
+Qwen2.5,0.5B,Qwen/Qwen2.5-0.5B,gsm8k,0.01158,0.01752
+Qwen2.5,0.5B,Qwen/Qwen2.5-0.5B,math,0.01258,0.01502
+Qwen2.5,0.5B,Qwen/Qwen2.5-0.5B,mmlu,0.00996,0.01384
+Qwen2.5,0.5B,Qwen/Qwen2.5-0.5B,nyt-locations,0.02287,0.02183
+Qwen2.5,0.5B,Qwen/Qwen2.5-0.5B,nyt-topics,0.0449,0.04842
+Qwen2.5,1.5B,Qwen/Qwen2.5-1.5B,ag_news,0.00911,0.00729
+Qwen2.5,1.5B,Qwen/Qwen2.5-1.5B,dbpedia,0.02336,0.02324
+Qwen2.5,1.5B,Qwen/Qwen2.5-1.5B,gsm8k,0.01154,0.01532
+Qwen2.5,1.5B,Qwen/Qwen2.5-1.5B,math,0.01821,0.02304
+Qwen2.5,1.5B,Qwen/Qwen2.5-1.5B,mmlu,0.01051,0.01358
+Qwen2.5,1.5B,Qwen/Qwen2.5-1.5B,nyt-locations,0.00874,0.00935
+Qwen2.5,1.5B,Qwen/Qwen2.5-1.5B,nyt-topics,0.01213,0.01068
+Qwen2.5,3B,Qwen/Qwen2.5-3B,ag_news,0.01203,0.01456
+Qwen2.5,3B,Qwen/Qwen2.5-3B,dbpedia,0.01208,0.01397
+Qwen2.5,3B,Qwen/Qwen2.5-3B,gsm8k,0.01626,0.03585
+Qwen2.5,3B,Qwen/Qwen2.5-3B,math,0.01162,0.01363
+Qwen2.5,3B,Qwen/Qwen2.5-3B,mmlu,0.01307,0.0122
+Qwen2.5,3B,Qwen/Qwen2.5-3B,nyt-locations,0.00604,0.01021
+Qwen2.5,3B,Qwen/Qwen2.5-3B,nyt-topics,0.01896,0.01601
+Qwen2.5,7B,Qwen/Qwen2.5-7B,ag_news,0.01188,0.0112
+Qwen2.5,7B,Qwen/Qwen2.5-7B,dbpedia,0.01185,0.0119
+Qwen2.5,7B,Qwen/Qwen2.5-7B,gsm8k,0.01185,0.02471
+Qwen2.5,7B,Qwen/Qwen2.5-7B,math,0.01591,0.02234
+Qwen2.5,7B,Qwen/Qwen2.5-7B,mmlu,0.00677,0.01045
+Qwen2.5,7B,Qwen/Qwen2.5-7B,nyt-locations,0.00885,0.01138
+Qwen2.5,7B,Qwen/Qwen2.5-7B,nyt-topics,0.01597,0.01634
+Gemma-2,2B,google/gemma-2-2b,ag_news,0.04655,0.03853
+Gemma-2,2B,google/gemma-2-2b,dbpedia,0.02022,0.02114
+Gemma-2,2B,google/gemma-2-2b,gsm8k,0.01306,0.01836
+Gemma-2,2B,google/gemma-2-2b,math,0.01314,0.0192
+Gemma-2,2B,google/gemma-2-2b,mmlu,0.00953,0.00909
+Gemma-2,2B,google/gemma-2-2b,nyt-locations,0.01942,0.02089
+Gemma-2,2B,google/gemma-2-2b,nyt-topics,0.02077,0.01903
+Gemma-2,9B,google/gemma-2-9b,ag_news,0.00856,0.01091
+Gemma-2,9B,google/gemma-2-9b,dbpedia,0.0073,0.01201
+Gemma-2,9B,google/gemma-2-9b,gsm8k,0.01501,0.02188
+Gemma-2,9B,google/gemma-2-9b,math,0.01351,0.02068
+Gemma-2,9B,google/gemma-2-9b,mmlu,0.00759,0.00935
+Gemma-2,9B,google/gemma-2-9b,nyt-locations,0.00707,0.00862
+Gemma-2,9B,google/gemma-2-9b,nyt-topics,0.02121,0.01839
+Gemma,2B,google/gemma-2b,ag_news,0.05299,0.06901
+Gemma,2B,google/gemma-2b,dbpedia,0.01917,0.03062
+Gemma,2B,google/gemma-2b,gsm8k,0.01252,0.02081
+Gemma,2B,google/gemma-2b,math,0.01276,0.01994
+Gemma,2B,google/gemma-2b,mmlu,0.00953,0.01081
+Gemma,2B,google/gemma-2b,nyt-locations,0.02165,0.02174
+Gemma,2B,google/gemma-2b,nyt-topics,0.02318,0.02243
+Gemma,7B,google/gemma-7b,ag_news,0.01033,0.01194
+Gemma,7B,google/gemma-7b,dbpedia,0.01501,0.01369
+Gemma,7B,google/gemma-7b,gsm8k,0.01595,0.01974
+Gemma,7B,google/gemma-7b,math,0.01397,0.01729
+Gemma,7B,google/gemma-7b,mmlu,0.01483,0.0162
+Gemma,7B,google/gemma-7b,nyt-locations,0.02131,0.02031
+Gemma,7B,google/gemma-7b,nyt-topics,0.02106,0.01971
+Llama 3,1B,meta-llama/Llama-3.2-1B-Instruct,ag_news,0.03845,0.03131
+Llama 3,1B,meta-llama/Llama-3.2-1B-Instruct,dbpedia,0.01758,0.02401
+Llama 3,1B,meta-llama/Llama-3.2-1B-Instruct,gsm8k,0.01524,0.0279
+Llama 3,1B,meta-llama/Llama-3.2-1B-Instruct,math,0.0172,0.01966
+Llama 3,1B,meta-llama/Llama-3.2-1B-Instruct,mmlu,0.00801,0.0088
+Llama 3,1B,meta-llama/Llama-3.2-1B-Instruct,nyt-locations,0.01269,0.01222
+Llama 3,1B,meta-llama/Llama-3.2-1B-Instruct,nyt-topics,0.01992,0.01619
+Llama 3,3B,meta-llama/Llama-3.2-3B-Instruct,ag_news,0.01239,0.01454
+Llama 3,3B,meta-llama/Llama-3.2-3B-Instruct,dbpedia,0.01036,0.01106
+Llama 3,3B,meta-llama/Llama-3.2-3B-Instruct,gsm8k,0.01441,0.01827
+Llama 3,3B,meta-llama/Llama-3.2-3B-Instruct,math,0.01419,0.01581
+Llama 3,3B,meta-llama/Llama-3.2-3B-Instruct,mmlu,0.01071,0.01138
+Llama 3,3B,meta-llama/Llama-3.2-3B-Instruct,nyt-locations,0.01527,0.01755
+Llama 3,3B,meta-llama/Llama-3.2-3B-Instruct,nyt-topics,0.02892,0.0319
+Llama 3,8B,meta-llama/Llama-3.1-8B-Instruct,ag_news,0.00995,0.01435
+Llama 3,8B,meta-llama/Llama-3.1-8B-Instruct,dbpedia,0.08791,0.13226
+Llama 3,8B,meta-llama/Llama-3.1-8B-Instruct,gsm8k,0.0107,0.01507
+Llama 3,8B,meta-llama/Llama-3.1-8B-Instruct,math,0.01013,0.01372
+Llama 3,8B,meta-llama/Llama-3.1-8B-Instruct,mmlu,0.01014,0.01312
+Llama 3,8B,meta-llama/Llama-3.1-8B-Instruct,nyt-locations,0.04282,0.06237
+Llama 3,8B,meta-llama/Llama-3.1-8B-Instruct,nyt-topics,0.02222,0.0242
+DeepSeek Distill,1.5B,deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B,ag_news,0.05886,0.05018
+DeepSeek Distill,1.5B,deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B,dbpedia,0.04405,0.03755
+DeepSeek Distill,1.5B,deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B,gsm8k,0.01842,0.03091
+DeepSeek Distill,1.5B,deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B,math,0.03005,0.03766
+DeepSeek Distill,1.5B,deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B,mmlu,0.01908,0.02483
+DeepSeek Distill,1.5B,deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B,nyt-locations,0.03914,0.0401
+DeepSeek Distill,1.5B,deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B,nyt-topics,0.04365,0.03331
+DeepSeek Distill,7B,deepseek-ai/DeepSeek-R1-Distill-Qwen-7B,ag_news,0.04589,0.032
+DeepSeek Distill,7B,deepseek-ai/DeepSeek-R1-Distill-Qwen-7B,dbpedia,0.03366,0.02878
+DeepSeek Distill,7B,deepseek-ai/DeepSeek-R1-Distill-Qwen-7B,gsm8k,0.01485,0.02307
+DeepSeek Distill,7B,deepseek-ai/DeepSeek-R1-Distill-Qwen-7B,math,0.04383,0.04848
+DeepSeek Distill,7B,deepseek-ai/DeepSeek-R1-Distill-Qwen-7B,mmlu,0.01313,0.01753
+DeepSeek Distill,7B,deepseek-ai/DeepSeek-R1-Distill-Qwen-7B,nyt-locations,0.02615,0.02871
+DeepSeek Distill,7B,deepseek-ai/DeepSeek-R1-Distill-Qwen-7B,nyt-topics,0.02316,0.01824
+Gemma-3,27B,,ag_news,0.00697,0.00771
+Gemma-3,27B,,dbpedia,0.00545,0.00828
+Gemma-3,27B,,gsm8k,0.02037,0.04427
+Gemma-3,27B,,math,0.00643,0.00807
+Gemma-3,27B,,mmlu,0.05288,0.0927
+Gemma-3,27B,,nyt-locations,0.00972,0.01356
+Gemma-3,27B,,nyt-topics,0.00802,0.00849
+GPT-5,Nano,gpt-5-nano (OpenAI API),ag_news,0.03792,0.03026
+GPT-5,Nano,gpt-5-nano (OpenAI API),dbpedia,0.06127,0.04807
+GPT-5,Nano,gpt-5-nano (OpenAI API),gsm8k,0.00976,0.00937
+GPT-5,Nano,gpt-5-nano (OpenAI API),math,0.02178,0.01577
+GPT-5,Nano,gpt-5-nano (OpenAI API),mmlu,0.0109,0.01087
+GPT-5,Nano,gpt-5-nano (OpenAI API),nyt-locations,0.00916,0.01095
+GPT-5,Nano,gpt-5-nano (OpenAI API),nyt-topics,0.01287,0.01359

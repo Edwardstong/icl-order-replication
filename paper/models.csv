@@ -1,0 +1,16 @@
+paper_family,size,hf_id,hf_id_source
+Qwen2.5,0.5B,Qwen/Qwen2.5-0.5B,paper
+Qwen2.5,1.5B,Qwen/Qwen2.5-1.5B,paper
+Qwen2.5,3B,Qwen/Qwen2.5-3B,paper
+Qwen2.5,7B,Qwen/Qwen2.5-7B,paper
+Gemma-2,2B,google/gemma-2-2b,paper
+Gemma-2,9B,google/gemma-2-9b,inferred
+Gemma,2B,google/gemma-2b,paper
+Gemma,7B,google/gemma-7b,paper
+Llama 3,1B,meta-llama/Llama-3.2-1B-Instruct,paper
+Llama 3,3B,meta-llama/Llama-3.2-3B-Instruct,paper
+Llama 3,8B,meta-llama/Llama-3.1-8B-Instruct,paper
+DeepSeek Distill,1.5B,deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B,paper
+DeepSeek Distill,7B,deepseek-ai/DeepSeek-R1-Distill-Qwen-7B,paper
+Gemma-3,27B,,unstated
+GPT-5,Nano,gpt-5-nano (OpenAI API),unstated
