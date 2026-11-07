@@ -46,9 +46,12 @@ def test_match_label_rules():
     assert match_label("The topic is business.", LABELS) == 2
     assert match_label("Science/Technology", LABELS) == 3
     assert match_label("Business or Sports", LABELS) == 2      # earliest mention wins
-    assert match_label("Sci/Tech", LABELS) == -1              # not an allowed label word
     assert match_label("", LABELS) == -1
     assert match_label("Sportsmanship", LABELS) == -1         # whole words only
+    assert match_label("Science", LABELS) == 3                # alias of Technology (AG News "Sci/Tech")
+    assert match_label("Sci/Tech", LABELS) == 3
+    assert match_label("Science", LABELS, aliases=None) == -1
+    assert match_label("Science or Business", LABELS) == 2    # an exact label word beats an alias
 
 
 def test_predict_uses_cache_and_counts_usage(tmp_path):
@@ -146,3 +149,31 @@ def test_keychain_lookup_handles_missing_tool(monkeypatch):
         raise OSError("no security tool")
     monkeypatch.setattr(mod.subprocess, "run", boom)
     assert mod._api_key_from_keychain() is None
+
+
+def test_budget_exhausted_retries_with_larger_budget(tmp_path, monkeypatch):
+    monkeypatch.setattr("iclorder.openai_scorer.time.sleep", lambda s: None)
+    calls = []
+
+    class Completions:
+        def create(self, **kw):
+            calls.append(kw)
+            if kw["max_completion_tokens"] < 100:
+                exc = RuntimeError("Could not finish the message because max_tokens or model output limit was reached.")
+                exc.status_code = 400
+                raise exc
+            return _resp("Sports")
+
+    client = types.SimpleNamespace(chat=types.SimpleNamespace(completions=Completions()))
+    sc = OpenAIScorer("gpt-5-nano", cache_dir=tmp_path, client=client, max_completion_tokens=64)
+    ids = sc.label_token_ids([f" {v}" for v in LABELS])
+    assert sc.predict(sc.encode_prefix("p"), ["q"], ids).tolist() == [1]
+    assert [c["max_completion_tokens"] for c in calls] == [64, 256]
+    assert sc.usage["budget_raised"] == 1 and sc.usage["retries"] == 0
+
+
+def test_alias_matches_are_tallied(tmp_path):
+    sc = OpenAIScorer("gpt-5-nano", cache_dir=tmp_path, client=FakeClient(lambda u: "Science"))
+    ids = sc.label_token_ids([f" {v}" for v in LABELS])
+    assert sc.predict(sc.encode_prefix("p"), ["q1", "q2"], ids).tolist() == [3, 3]
+    assert sc.usage["alias_matched"] == 2 and sc.usage["unmatched"] == 0

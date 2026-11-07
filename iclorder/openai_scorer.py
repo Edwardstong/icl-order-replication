@@ -36,20 +36,35 @@ PRICES_PER_M: dict[str, tuple[float, float, float]] = {
 
 _WORD = re.compile(r"[a-z0-9]+")
 
+# Synonyms a chat model uses for a label word (AG News's real class name is "Sci/Tech";
+# our label word is "Technology"). Keyed by normalized label word; applied only when
+# that label is in the current label set. A match through an alias is tallied.
+LABEL_ALIASES: dict[str, tuple[str, ...]] = {
+    "technology": ("science", "sci tech", "science technology", "tech", "science and technology"),
+}
+
 
 def normalize(text: str) -> str:
     return " ".join(_WORD.findall(text.lower()))
 
 
-def match_label(text: str, labels: list[str]) -> int:
+def match_label(text: str, labels: list[str], aliases: dict[str, tuple[str, ...]] | None = LABEL_ALIASES) -> int:
     """Index of the label mentioned first in `text` as a whole word (after
-    lower-casing and dropping punctuation), or -1 if no label is mentioned."""
+    lower-casing and dropping punctuation), or -1 if no label is mentioned.
+    Exact label words win over aliases; among aliases the earliest mention wins."""
     hay = f" {normalize(text)} "
     best, best_pos = -1, None
     for i, lab in enumerate(labels):
         pos = hay.find(f" {normalize(lab)} ")
         if pos >= 0 and (best_pos is None or pos < best_pos):
             best, best_pos = i, pos
+    if best >= 0 or not aliases:
+        return best
+    for i, lab in enumerate(labels):
+        for alt in aliases.get(normalize(lab), ()):
+            pos = hay.find(f" {normalize(alt)} ")
+            if pos >= 0 and (best_pos is None or pos < best_pos):
+                best, best_pos = i, pos
     return best
 
 
@@ -77,6 +92,12 @@ def _retryable(exc: Exception) -> bool:
             return True
     status = getattr(exc, "status_code", 0) or 0
     return status in (408, 409, 429) or status >= 500
+
+
+def _budget_exhausted(exc: Exception) -> bool:
+    """OpenAI returns 400 'Could not finish the message because max_tokens ... was reached'
+    when hidden reasoning used the whole completion budget."""
+    return getattr(exc, "status_code", 0) == 400 and "max_tokens" in str(exc)
 
 
 def _usage_dict(resp) -> dict[str, int]:
@@ -166,7 +187,7 @@ class OpenAIScorer:
         # attributes the run scripts print for any backend
         self.device, self.dtype, self.load_seconds = "openai", "api", 0.0
         self.usage = {k: 0 for k in ("requests", "cache_hits", "retries", "prompt_tokens", "cached_prompt_tokens",
-                                     "completion_tokens", "reasoning_tokens", "unmatched")}
+                                     "completion_tokens", "reasoning_tokens", "unmatched", "alias_matched", "budget_raised")}
         self._lock = threading.Lock()
 
     # -- interface used by runner.evaluate_grid -------------------------------------------------
@@ -194,8 +215,10 @@ class OpenAIScorer:
         outs = self.complete_many([prefix.text + q for q in queries], self.classification_instruction(),
                                   self.max_completion_tokens)
         preds = np.array([match_label(o, self.labels) for o in outs], dtype=np.int64)
+        exact = np.array([match_label(o, self.labels, aliases=None) for o in outs], dtype=np.int64)
         with self._lock:
             self.usage["unmatched"] += int((preds < 0).sum())
+            self.usage["alias_matched"] += int(((exact < 0) & (preds >= 0)).sum())
         return preds
 
     def generate(self, prefix_text: str, queries: list[str], max_new_tokens: int = 256) -> list[str]:
@@ -220,11 +243,19 @@ class OpenAIScorer:
         if self.reasoning_effort:
             kwargs["reasoning_effort"] = self.reasoning_effort
         delay = 1.0
+        raised = False
         for attempt in range(self.retries + 1):
             try:
                 resp = self.client.chat.completions.create(**kwargs)
                 break
             except Exception as exc:  # noqa: BLE001
+                if _budget_exhausted(exc) and not raised:
+                    # reasoning tokens consumed the completion budget: retry once with 4x
+                    kwargs["max_completion_tokens"] = 4 * max_tokens
+                    raised = True
+                    with self._lock:
+                        self.usage["budget_raised"] += 1
+                    continue
                 if attempt >= self.retries or not _retryable(exc):
                     raise
                 with self._lock:
