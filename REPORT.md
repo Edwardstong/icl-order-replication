@@ -93,17 +93,29 @@ about 90 minutes. Models of 1.5B to 2B parameters cost about three times that. G
 
 ### 3.2 What we run
 
-| | Paper | Our replication |
-|---|---|---|
-| Models | 15, 0.5B to 27B plus GPT-5-nano | Qwen2.5-0.5B first; Qwen2.5-1.5B, Llama-3.2-1B-Instruct, Gemma-2-2B as time allows |
-| Classification data | AG News, DBPedia, MMLU, NYT-Topics, NYT-Locations | AG News, DBPedia, MMLU (the NYT corpora need an LDC licence) |
-| Generation data | GSM8K, MATH, MMLU-Pro | GSM8K only, on GPU time, optional |
-| Section 3 grid | M = 10, P = 10, 500 test | identical |
-| Section 4 search | P = 128, 1,000 dev, 500 test | P = 32, 250 dev, 500 test (the paper's own plateau); full size is a flag |
+The checkpoint requirement is one model on one dataset. We chose **GPT-5-nano on AG News**: the
+only model in the paper that is reached through an API rather than local weights, on the paper's
+smallest classification task, at the paper's full Section 3 grid (M = 10 sets, P = 10 orderings,
+500 test examples, 50,000 prompts). Its target is one cell of the paper's Table 4: ordering 0.0379,
+selection 0.0303, r = 0.80. The paper's own text singles GPT-5-nano out as the model where ordering
+matters more than selection, so this cell tests the paper's exception rather than its average.
 
-Three datasets matter even for one model: in the paper every small model has ordering > selection
-on AG News and the opposite on DBPedia and MMLU, so a single AG News cell could not show the
-headline result.
+As a free cross-check we also report the same cell, and the DBPedia cell, for Qwen2.5-0.5B, the
+smallest open model in the paper, run locally on a laptop with the prefix-cache scorer of 3.1.
+They cost nothing and show the same formulas applied to a second model with a different scoring
+rule (next-token probabilities rather than generated text).
+
+| | Paper | Required cell | Free extras |
+|---|---|---|---|
+| Model | 15, 0.5B to 27B plus GPT-5-nano | GPT-5-nano via the OpenAI API | Qwen2.5-0.5B, local |
+| Dataset | 7 | AG News | AG News, DBPedia |
+| Section 3 grid | M = 10, P = 10, 500 test | identical | identical |
+| Section 4 search | P = 128, 1,000 dev | not run (not in the paper for GPT-5-nano) | not run |
+| Cost | GPUs, unstated | about $2 of API credit, 40 minutes | laptop, 16 and 25 minutes |
+
+The harness also runs the other paper datasets we can access (DBPedia, MMLU, GSM8K), the other
+small open models, and the Section 4 ordering search; those are documented in the README and
+roadmap but are outside the checkpoint.
 
 ### 3.3 Choices the paper leaves open
 
@@ -121,6 +133,8 @@ most likely to move numbers:
 | Default ordering | grouped by label alphabetically, examples alphabetical within label (as stated); random orderings are distinct uniform permutations of that |
 | Standard deviation | population (ddof = 0) |
 | Highest-dev rule | the paper describes it two ways; we report both: best ordering by dev accuracy pooled over sets, and per set |
+| GPT-5-nano prompt | the same demonstrations-plus-query text as the user message, with one system line naming the allowed labels; reasoning effort minimal; API default decoding (no temperature setting exists) |
+| GPT-5-nano label reading | first allowed label word in the generated text; "Science" accepted for the Sci/Tech class; answers naming no label count as wrong and are tallied |
 
 We also found six internal inconsistencies in the paper (abstract vs body on GPT-5 vs GPT-5-nano,
 a "most sensitive" claim contradicted by its own table, two definitions of the Section 4 rule,
@@ -158,16 +172,18 @@ exact numbers: with the template and sampling unstated, exact agreement would be
 - Where we disagree with the paper, which unstated choice could explain it: the template, the
   log-probability reading of the label (the paper may have generated text), the label words, or
   the demonstration pool.
-- Limits of this replication: one to four small models instead of 15, three datasets instead of
-  seven, no generation task unless GPU time was found, reduced P and dev size in Section 4, no
-  GPT-5-nano row (about $5 of API credit and a small backend would add it).
+- Limits of this replication: one required cell (GPT-5-nano on AG News) plus two free Qwen2.5-0.5B
+  cells, against the paper's 15 models and 7 datasets; no Section 4 search; GPT-5-nano decoding is
+  not deterministic through the API, so its cell carries sampling noise the paper does not discuss.
 
 ## 6. Reproducing this report
 
 ```bash
 python3.13 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m pytest -q                 # unit tests, no downloads
-scripts/minimal.sh                            # splits, three Section 3 cells, one Section 4 cell, tables
+.venv/bin/python scripts/build_splits.py --dataset ag_news
+scripts/run_openai_cells.sh ag_news           # GPT-5-nano, needs OPENAI_API_KEY or the Keychain entry (README)
+.venv/bin/python scripts/run_sensitivity.py --model Qwen/Qwen2.5-0.5B --dataset ag_news   # free extra, local
 .venv/bin/python scripts/fill_report.py       # rewrites Section 4 of this file and report/figures/
 ```
 
