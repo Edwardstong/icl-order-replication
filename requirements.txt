@@ -1,15 +1,6 @@
-# Core (CPU, Apple MPS and CUDA all work with these)
-torch>=2.5
-transformers>=4.51
-datasets>=3.0
+openai>=1.50        # the API client
+datasets>=3.0       # downloads AG News once (scripts/build_splits.py)
 numpy>=1.26
-pandas>=2.2
 tqdm>=4.66
-pytest>=8.0
-# Optional, GPU only, for the generation runs on Colab/Kaggle:
-#   pip install vllm
-
-# Optional, for checking paper/ tables against the PDF text:
-#   pip install pypdf
-matplotlib>=3.9          # report figures (scripts/fill_report.py)
-openai>=1.50            # --backend openai (GPT-5-nano row); key in OPENAI_API_KEY
+pytest>=8.0         # tests; no network, no key needed
+matplotlib>=3.9     # only for scripts/plot_grid.py

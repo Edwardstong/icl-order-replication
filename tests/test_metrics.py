@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from iclorder.metrics import accuracy_matrix, sensitivities
+from iclorder.metrics import sensitivities
 
 
 def test_formulas_on_small_matrix():
@@ -13,11 +13,11 @@ def test_formulas_on_small_matrix():
     # column stds: std([.5,.6]) = .05, std([.7,.6]) = .05, std([.9,.6]) = .15 -> mean 0.08333
     assert s["selection"] == pytest.approx(np.mean([0.05, 0.05, 0.15]))
     assert s["r"] == pytest.approx(s["selection"] / s["ordering"])
-    assert s["M"] == 2 and s["P"] == 3
+    assert s["M"] == 2 and s["P"] == 3 and s["mean_acc"] == pytest.approx(0.65)
 
 
 def test_order_invariant_sets_give_zero_ordering_sensitivity():
-    acc = np.tile(np.array([[0.3], [0.8], [0.5]]), (1, 4))  # every permutation identical per set
+    acc = np.tile(np.array([[0.3], [0.8], [0.5]]), (1, 4))  # every ordering identical per set
     s = sensitivities(acc)
     assert s["ordering"] == 0.0
     assert np.isnan(s["r"])
@@ -27,14 +27,6 @@ def test_order_invariant_sets_give_zero_ordering_sensitivity():
 def test_ddof_changes_result():
     acc = np.array([[0.5, 0.7], [0.6, 0.9]])
     assert sensitivities(acc, ddof=1)["ordering"] > sensitivities(acc, ddof=0)["ordering"]
-
-
-def test_accuracy_matrix_from_correctness():
-    correct = np.zeros((2, 3, 4), dtype=np.uint8)
-    correct[0, 1, :2] = 1
-    acc = accuracy_matrix(correct)
-    assert acc.shape == (2, 3)
-    assert acc[0, 1] == 0.5 and acc[1, 2] == 0.0
 
 
 def test_rejects_wrong_shapes():

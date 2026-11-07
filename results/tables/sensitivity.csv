@@ -1,4 +1,0 @@
-model,dataset,tag,M,P,n_test,mean_acc,ordering,selection,r,paper_ordering,paper_selection,paper_r,folder
-Qwen/Qwen2.5-0.5B,ag_news,,10,10,500,0.7542,0.01788,0.01737,0.972,0.04581,0.03704,0.809,Qwen__Qwen2.5-0.5B__ag_news
-Qwen/Qwen2.5-0.5B,dbpedia,,10,10,500,0.9566,0.0078,0.00842,1.08,0.00835,0.01783,2.135,Qwen__Qwen2.5-0.5B__dbpedia
-gpt-5-nano,ag_news,,10,10,500,0.7691,0.03061,0.02434,0.795,0.03792,0.03026,0.798,gpt-5-nano__ag_news

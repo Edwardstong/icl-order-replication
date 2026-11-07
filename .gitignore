@@ -1,10 +1,11 @@
 .venv/
 __pycache__/
-*.pyc
 .pytest_cache/
 .DS_Store
 *.log
+# rebuilt by scripts/build_splits.py (seeded, byte-identical)
 data/
+# per-example correctness, 50 KB per run
 *.npy
-*.sqlite
+# every raw API reply, 14 MB
 results/openai_cache/

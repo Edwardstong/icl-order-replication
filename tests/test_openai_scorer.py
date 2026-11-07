@@ -1,11 +1,10 @@
-"""OpenAI backend, exercised with a fake client: no network, no key."""
+"""The API scorer, exercised with a fake client: no network, no key."""
 import types
 
-import numpy as np
 import pytest
 
 import iclorder.openai_scorer as mod
-from iclorder.openai_scorer import OpenAIScorer, PrefixText, match_label, price_for
+from iclorder.openai_scorer import OpenAIScorer, match_label, price_for
 
 LABELS = ["World", "Sports", "Business", "Technology"]
 
@@ -20,7 +19,7 @@ def _resp(text, prompt_tokens=100, completion_tokens=3, cached=0, reasoning=0):
 
 
 class FakeClient:
-    """client.chat.completions.create(**kw) -> response built from `reply(user_text)`."""
+    """client.chat.completions.create(**kw) -> response built from reply(user_text)."""
 
     def __init__(self, reply, fail_first=0):
         self.calls = []
@@ -55,49 +54,33 @@ def test_match_label_rules():
 
 
 def test_predict_uses_cache_and_counts_usage(tmp_path):
-    reply = lambda user: "Sports" if "ball" in user else "World"  # noqa: E731
-    client = FakeClient(reply)
+    client = FakeClient(lambda user: "Sports" if "ball" in user else "World")
     sc = OpenAIScorer("gpt-5-nano", workers=2, cache_dir=tmp_path, client=client)
-    ids = sc.label_token_ids([f" {v}" for v in LABELS])
-    assert ids == [0, 1, 2, 3]
-    st = sc.encode_prefix("Article: a\nTopic: World\n\n")
-    assert isinstance(st, PrefixText) and st.length >= 1
-    queries = ["Article: ball game\nTopic:", "Article: summit\nTopic:", "Article: football\nTopic:"]
-    preds = sc.predict(st, queries, ids)
-    assert preds.tolist() == [1, 0, 1]
-    assert sc.usage["requests"] == 3 and sc.usage["cache_hits"] == 0 and sc.usage["unmatched"] == 0
-    assert sc.usage["prompt_tokens"] == 300
-    # system message names the labels; user message is prefix + query
+    prompts = ["Article: a\nTopic: World\n\nArticle: ball game\nTopic:", "Article: a\nTopic: World\n\nArticle: summit\nTopic:"]
+    assert sc.predict(prompts).tolist() == [1, 0]
+    assert sc.usage["requests"] == 2 and sc.usage["cache_hits"] == 0 and sc.usage["unmatched"] == 0
+    assert sc.usage["prompt_tokens"] == 200
     kw = client.calls[0]
     assert kw["model"] == "gpt-5-nano" and kw["reasoning_effort"] == "minimal" and kw["max_completion_tokens"] == 64
     assert "World, Sports, Business, Technology" in kw["messages"][0]["content"]
-    assert kw["messages"][1]["content"].startswith("Article: a\nTopic: World")
+    assert kw["messages"][1]["content"] == prompts[0]
 
     # same prompts again: served from the sqlite cache, no new calls
-    preds2 = sc.predict(st, queries, ids)
-    assert preds2.tolist() == preds.tolist()
-    assert sc.usage["requests"] == 3 and sc.usage["cache_hits"] == 3 and len(client.calls) == 3
+    assert sc.predict(prompts).tolist() == [1, 0]
+    assert sc.usage["requests"] == 2 and sc.usage["cache_hits"] == 2 and len(client.calls) == 2
 
     # a fresh scorer on the same cache dir also hits the cache
     sc2 = OpenAIScorer("gpt-5-nano", cache_dir=tmp_path, client=FakeClient(lambda u: "Business"))
-    sc2.label_token_ids([f" {v}" for v in LABELS])
-    assert sc2.predict(st, queries, ids).tolist() == [1, 0, 1]
-    assert sc2.usage["requests"] == 0 and sc2.usage["cache_hits"] == 3
+    assert sc2.predict(prompts).tolist() == [1, 0]
+    assert sc2.usage["requests"] == 0 and sc2.usage["cache_hits"] == 2
 
 
-def test_unmatched_answers_count_as_wrong(tmp_path):
+def test_unmatched_and_alias_tallies(tmp_path):
     sc = OpenAIScorer("gpt-5-nano", cache_dir=tmp_path, client=FakeClient(lambda u: "I am not sure."))
-    ids = sc.label_token_ids([f" {v}" for v in LABELS])
-    preds = sc.predict(sc.encode_prefix("p"), ["q1", "q2"], ids)
-    assert preds.tolist() == [-1, -1] and sc.usage["unmatched"] == 2
-
-
-def test_generate_passes_text_through(tmp_path):
-    client = FakeClient(lambda u: "She has 3 + 4 = 7 apples.\n#### 7")
-    sc = OpenAIScorer("gpt-5-nano", cache_dir=tmp_path, client=client)
-    outs = sc.generate("Question: a\nAnswer: #### 1\n\n", ["Question: b\nAnswer:"], max_new_tokens=300)
-    assert outs == ["She has 3 + 4 = 7 apples.\n#### 7"]
-    assert "####" in client.calls[0]["messages"][0]["content"] and client.calls[0]["max_completion_tokens"] == 300
+    assert sc.predict(["q1", "q2"]).tolist() == [-1, -1] and sc.usage["unmatched"] == 2
+    sc = OpenAIScorer("gpt-5-nano", cache_dir=tmp_path / "b", client=FakeClient(lambda u: "Science"))
+    assert sc.predict(["q1", "q2"]).tolist() == [3, 3]
+    assert sc.usage["alias_matched"] == 2 and sc.usage["unmatched"] == 0
 
 
 def test_retry_on_retryable_error(tmp_path, monkeypatch):
@@ -115,42 +98,6 @@ def test_retries_exhausted_raises(tmp_path, monkeypatch):
         sc.complete("x", "sys", 8)
 
 
-def test_cost_estimate(tmp_path):
-    sc = OpenAIScorer("gpt-5-nano-2025-08-07", cache_dir=tmp_path, client=FakeClient(lambda u: "World"))
-    sc.usage.update(prompt_tokens=1_000_000, cached_prompt_tokens=200_000, completion_tokens=10_000)
-    # 800k uncached * 0.05 + 200k cached * 0.005 + 10k out * 0.40, per million
-    assert sc.estimated_cost_usd() == pytest.approx(0.04 + 0.001 + 0.004)
-    assert price_for("unknown-model") is None
-    s = sc.usage_summary()
-    assert s["model"].startswith("gpt-5-nano") and s["estimated_cost_usd"] == pytest.approx(0.045)
-
-
-def test_no_reasoning_effort_when_disabled(tmp_path):
-    client = FakeClient(lambda u: "World")
-    sc = OpenAIScorer("gpt-4.1-mini", cache_dir=tmp_path, client=client, reasoning_effort=None)
-    sc.complete("x", "sys", 8)
-    assert "reasoning_effort" not in client.calls[0]
-
-
-def test_key_lookup_env_then_keychain(monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.setattr(mod, "_api_key_from_keychain", lambda service=None: None)
-    with pytest.raises(SystemExit):
-        mod._make_client()
-    monkeypatch.setattr(mod, "_api_key_from_keychain", lambda service=None: "sk-test-from-keychain")
-    client = mod._make_client()
-    assert client.api_key == "sk-test-from-keychain"
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-from-env")
-    assert mod._make_client().api_key == "sk-test-from-env"
-
-
-def test_keychain_lookup_handles_missing_tool(monkeypatch):
-    def boom(*a, **k):
-        raise OSError("no security tool")
-    monkeypatch.setattr(mod.subprocess, "run", boom)
-    assert mod._api_key_from_keychain() is None
-
-
 def test_budget_exhausted_retries_with_larger_budget(tmp_path, monkeypatch):
     monkeypatch.setattr("iclorder.openai_scorer.time.sleep", lambda s: None)
     calls = []
@@ -166,14 +113,39 @@ def test_budget_exhausted_retries_with_larger_budget(tmp_path, monkeypatch):
 
     client = types.SimpleNamespace(chat=types.SimpleNamespace(completions=Completions()))
     sc = OpenAIScorer("gpt-5-nano", cache_dir=tmp_path, client=client, max_completion_tokens=64)
-    ids = sc.label_token_ids([f" {v}" for v in LABELS])
-    assert sc.predict(sc.encode_prefix("p"), ["q"], ids).tolist() == [1]
+    assert sc.predict(["q"]).tolist() == [1]
     assert [c["max_completion_tokens"] for c in calls] == [64, 256]
     assert sc.usage["budget_raised"] == 1 and sc.usage["retries"] == 0
 
 
-def test_alias_matches_are_tallied(tmp_path):
-    sc = OpenAIScorer("gpt-5-nano", cache_dir=tmp_path, client=FakeClient(lambda u: "Science"))
-    ids = sc.label_token_ids([f" {v}" for v in LABELS])
-    assert sc.predict(sc.encode_prefix("p"), ["q1", "q2"], ids).tolist() == [3, 3]
-    assert sc.usage["alias_matched"] == 2 and sc.usage["unmatched"] == 0
+def test_cost_estimate(tmp_path):
+    sc = OpenAIScorer("gpt-5-nano-2025-08-07", cache_dir=tmp_path, client=FakeClient(lambda u: "World"))
+    sc.usage.update(prompt_tokens=1_000_000, cached_prompt_tokens=200_000, completion_tokens=10_000)
+    # 800k uncached * 0.05 + 200k cached * 0.005 + 10k out * 0.40, per million
+    assert sc.estimated_cost_usd() == pytest.approx(0.04 + 0.001 + 0.004)
+    assert price_for("unknown-model") is None
+    assert sc.usage_summary()["estimated_cost_usd"] == pytest.approx(0.045)
+
+
+def test_no_reasoning_effort_when_disabled(tmp_path):
+    client = FakeClient(lambda u: "World")
+    OpenAIScorer("gpt-4.1-mini", cache_dir=tmp_path, client=client, reasoning_effort=None).complete("x", "sys", 8)
+    assert "reasoning_effort" not in client.calls[0]
+
+
+def test_key_lookup_env_then_keychain(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr(mod, "_api_key_from_keychain", lambda service=None: None)
+    with pytest.raises(SystemExit):
+        mod._make_client()
+    monkeypatch.setattr(mod, "_api_key_from_keychain", lambda service=None: "sk-test-from-keychain")
+    assert mod._make_client().api_key == "sk-test-from-keychain"
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-from-env")
+    assert mod._make_client().api_key == "sk-test-from-env"
+
+
+def test_keychain_lookup_handles_missing_tool(monkeypatch):
+    def boom(*a, **k):
+        raise OSError("no security tool")
+    monkeypatch.setattr(mod.subprocess, "run", boom)
+    assert mod._api_key_from_keychain() is None

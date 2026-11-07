@@ -1,168 +1,131 @@
-# ICL order replication
+# Order vs selection in in-context learning: one cell, replicated
 
-Replication harness for **"Order Matters: Rethinking Prompt Construction in In-Context Learning"**
-(Li, Wang, Wang, Shang; arXiv:2511.09700, Nov 2025). Course project checkpoint.
+Replication of one cell of **"Order Matters: Rethinking Prompt Construction in In-Context Learning"**
+(Li, Wang, Wang, Shang; [arXiv:2511.09700](https://arxiv.org/abs/2511.09700), November 2025), for a
+course project checkpoint: **GPT-5-nano on AG News**, at the paper's full grid.
 
-The paper asks whether *which* demonstrations go into a few-shot prompt matters more than
-*what order* they are in. It measures both as standard deviations of accuracy over a grid of
-M demonstration sets x P random orderings (Section 3), then shows that picking the best of P
-random orderings on a dev set recovers most of an oracle's test accuracy (Section 4).
+The paper's question: in a few-shot prompt, does *which* examples you show matter more than *what
+order* you show them in? It measures both as standard deviations of accuracy over a grid of
+M demonstration sets x P random orderings and reports their ratio r = selection / ordering.
+r < 1 means the order moves accuracy more than the choice of examples.
 
-No code, prompt template, scoring rule or sampling procedure is released with the paper.
-Everything below is our reconstruction; each choice is recorded in [METHODS.md](METHODS.md).
+## Result
 
-## Scope of this replication
+GPT-5-nano, AG News, M = 10 demonstration sets x P = 10 orderings x 500 test examples (50,000 prompts).
 
-| | Paper | Here |
+| | Ours | Paper (Table 4) |
 |---|---|---|
-| Models | 15 (0.5B to 27B, plus GPT-5-nano) | Qwen2.5-0.5B, Qwen2.5-1.5B, Llama-3.2-1B-Instruct, Gemma-2-2B; any HF causal LM works |
-| Classification data | AG News, DBPedia, MMLU, NYT-Topics, NYT-Locations | AG News, DBPedia, MMLU (NYT needs an LDC license) |
-| Generation data | GSM8K, MATH, MMLU-Pro | GSM8K only, and only with GPU time |
-| Section 3 | M=10, P=10, 500 test | same, full size |
-| Section 4 | M=10, P=128, 1000 dev, 500 test | M=10, P=32, 250 dev, 500 test (the paper's stated plateau); full size is a flag away |
-| Hardware | not stated | laptops (CPU / Apple MPS) for classification; free GPU tiers for GSM8K |
+| Ordering sensitivity | **0.0306** | 0.0379 |
+| Selection sensitivity | **0.0243** | 0.0303 |
+| r = selection / ordering | **0.80** | 0.80 |
+| Mean accuracy | 0.769 | not reported |
 
-## What needs the OpenAI API
+The ratio matches to two decimals and the direction is the paper's: for this model on this task,
+ordering matters more than selection. Both of our sensitivities are about 80% of the paper's;
+[REPORT.md](REPORT.md) section 5 says why. Accuracy ranged from 0.676 to 0.826 across the 100 prompt
+constructions, and the worst ordering lost to the best one in every one of the 10 demonstration sets.
 
-Only the **GPT-5-nano** rows of Section 3: one row of Table 2 (ordering 0.0234, selection 0.0198,
-r 0.85) and seven rows of Table 4 (one per dataset). The Section 4 experiments (Tables 5 to 7) use the
-twelve open models only. GPT-5-nano is one of fifteen models in the paper's headline averages, so
-leaving it out changes those averages little. Everything else in this harness runs on open weights
-with no key.
+![GPT-5-nano on AG News: the 10 x 10 accuracy grid with row and column spreads](results/gpt-5-nano__ag_news/accuracy_grid.png)
 
-If the team does want that row:
+Run facts: 50,000 requests, 22.4 M input tokens, $1.28 at list prices, 19 minutes with 24 parallel
+requests. 0.5% of replies named no label (counted wrong) and 0.5% said "Science" for the Sci/Tech
+class (accepted). Every reply is cached, so rerunning the grid reproduces these exact numbers at no cost.
 
-- **Subscription is not API credit.** A ChatGPT Plus/Pro subscription includes Codex usage when
-  Codex is signed in with ChatGPT, but that quota pays for the Codex agent's own calls (its coding
-  models, under 5-hour and weekly caps). It does not give API credit, and the paper's model is reached
-  only through the API. The API is billed separately on platform.openai.com; the smallest top-up is $5.
-  Pin the model id `gpt-5-nano` (the August 2025 model the paper used), not the newer `gpt-5.4-nano`,
-  which is a different model at four times the price.
-- **Cost.** One full Section 3 cell is M x P x N = 50,000 requests. List prices for gpt-5-nano
-  (checked 2026-11-06): $0.05 per 1M input, $0.005 cached input, $0.40 per 1M output; the Batch API
-  is about half that. AG News prompts (about 550 tokens, under the 1,024-token caching threshold)
-  cost about $1.8 per cell synchronously; MMLU and DBPedia prompts are longer but mostly cached, about
-  $1.2 each. All three classification cells: about $5 synchronously, about $2.50 through the Batch
-  API. GSM8K is generation with a few hundred output tokens per call, about $6 to $8 per cell. The
-  risk is reasoning tokens: set `reasoning_effort` to minimal and measure one small batch first;
-  200 hidden reasoning tokens per call would add about $4 per cell.
-- **Method difference.** We could not confirm whether gpt-5-nano returns token log-probabilities;
-  third-party listings disagree. The backend should request `logprobs` once and fall back to scoring
-  by generating the label text and matching it to a label name. The paper does not say how it scored
-  GPT-5-nano. Record whatever the team does in METHODS.md.
-- **Implemented as `--backend openai`.** `iclorder/openai_scorer.py` sends the same demonstrations-plus-query
-  text as a chat (a short system line names the allowed labels), reads the label from the generated text,
-  caches every completion in `results/openai_cache/<model>.sqlite` (reruns and resumed runs are free),
-  retries on rate limits, and records requests, tokens, unmatched answers and an estimated cost in
-  `summary.json`. The key is read from `OPENAI_API_KEY` by the SDK and never stored. Smoke first, then full:
-  ```bash
-  .venv/bin/python scripts/run_sensitivity.py --backend openai --model gpt-5-nano --dataset ag_news --M 2 --P 2 --n-test 16 --tag smoke
-  .venv/bin/python scripts/run_sensitivity.py --backend openai --model gpt-5-nano --dataset ag_news --workers 8
-  ```
-  Watch the `unmatched` count in the smoke output: answers that name no label count as wrong, and a
-  high count means the label words or the completion budget need attention, not the model.
+Full write-up: [REPORT.md](REPORT.md). Every choice the paper leaves unstated: [METHODS.md](METHODS.md).
 
-## Why this fits on laptops
+## Where to find things
 
-For one demonstration set and one ordering, the demonstrations are identical for every
-test query. `iclorder/scorer.py` encodes that prefix once, keeps its key/value cache, and runs
-only the short query tokens through the model, in batches. Classification needs no text
-generation: the label is read from the next-token distribution over the label words. Each test
-example then costs one forward pass of ~50 tokens on a model under 2B parameters.
+Four short modules, two scripts, one plotting script, about 700 lines in all. Read them in this order.
 
-Measured: 46 queries/s for Qwen2.5-0.5B on an M4 Pro (bf16, batch 32, 8-shot AG News prefixes of
-~490 tokens). That makes one full Section 3 cell (50,000 evaluations) about 18 minutes, and one
-reduced Section 4 cell (P=32, 250 dev + 500 test = 240,000 evaluations) about 90 minutes, for the
-0.5B model. Budget roughly 3x for the 1.5B-2B models and 2x for DBPedia's 28-demonstration prefixes:
-Section 3 on four models x three datasets is an overnight job on one laptop; Section 4 on two
-datasets is a day or two, or a few hours split across the team.
-Generation (GSM8K) needs batched decoding; use Colab / Kaggle free GPUs, ideally with vLLM.
+| Question | File | Lines |
+|---|---|---|
+| Where do the test examples and demonstrations come from, how are the 10 sets drawn? | [`iclorder/dataset.py`](iclorder/dataset.py) | 125 |
+| How is the prompt built, what is the default ordering, how are the 10 orderings drawn? | [`iclorder/prompts.py`](iclorder/prompts.py) | 65 |
+| How is the model called, how is its reply turned into a label, how is everything cached? | [`iclorder/openai_scorer.py`](iclorder/openai_scorer.py) | 239 |
+| The two sensitivity formulas and r (paper Eqs. 1-3) | [`iclorder/metrics.py`](iclorder/metrics.py) | 24 |
+| The experiment loop: sets x orderings x test examples, and what gets saved | [`scripts/run_sensitivity.py`](scripts/run_sensitivity.py) | 111 |
+| Download AG News and write the data files | [`scripts/build_splits.py`](scripts/build_splits.py) | 30 |
+| Draw the figure above | [`scripts/plot_grid.py`](scripts/plot_grid.py) | 107 |
+| Our numbers | [`results/gpt-5-nano__ag_news/`](results/gpt-5-nano__ag_news/) | |
+| Tests: formulas, sampling, prompt text, label reading, cache, retries (fake API client, no key) | [`tests/`](tests/) | |
 
-## Quickstart
+What is in the result folder:
 
-```bash
-python3.13 -m venv .venv            # 3.11+ works
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python -m pytest -q        # unit tests, no downloads
-```
-
-Gated weights (Llama 3.x, Gemma) need a Hugging Face account that accepted each model's license:
-```bash
-.venv/bin/hf auth login
-```
-
-Build data, then run. Every script has `--help`.
-```bash
-.venv/bin/python scripts/build_splits.py --dataset ag_news        # also: dbpedia, mmlu, gsm8k
-.venv/bin/python scripts/run_sensitivity.py --model Qwen/Qwen2.5-0.5B --dataset ag_news
-.venv/bin/python scripts/run_search.py      --model Qwen/Qwen2.5-0.5B --dataset ag_news --P 32 --n-dev 250
-.venv/bin/python scripts/make_tables.py                            # results/tables/*.csv next to the paper's numbers
-```
-`scripts/smoke.sh` runs a tiny end-to-end check (2x2 grid, 16 examples) on Qwen2.5-0.5B.
-
-Full-size Section 4, when GPU time allows:
-```bash
-.venv/bin/python scripts/run_search.py --model Qwen/Qwen2.5-0.5B --dataset ag_news --P 128 --n-dev 1000 --batch-size 64
-```
-
-## Layout
-
-```
-iclorder/            the library (specs, data, prompts, scorer, metrics, search, runner, parse)
-scripts/             build_splits, run_sensitivity, run_search, make_tables, smoke.sh
-tests/               unit tests for every formula and sampling rule (pytest)
-paper/               the paper's Tables 2 and 4 as CSV, and the model-id mapping
-docs/PAPER_NOTES.md  the paper's definitions and procedure, extracted, with its internal inconsistencies
-METHODS.md           every detail the paper leaves unstated and the choice we froze
-data/                materialized splits (gitignored; rebuilt by build_splits.py, seeded)
-results/             one folder per run with summary.json (kept) and .npy arrays (gitignored)
-```
-
-Each run folder is self-contained: `summary.json` holds the config, the metrics, the environment
-and timing; `perms.json` and `demo_sets.json` hold the exact orderings and example ids, so any
-cell can be recomputed. Team members run disjoint (model, dataset) slices and merge the folders.
-
-## Replication structure
-
-Each phase has a command, an output folder and the paper number it is compared with. Phases 2 and 3
-are the checkpoint; 4 and 5 are optional extensions.
-
-| Phase | What | How | Output | Paper target |
-|---|---|---|---|---|
-| 0 Setup | venv, tests, smoke run | Quickstart above | passing `pytest`, `results/*__smoke` | none |
-| 1 Data | balanced 1,000 dev + 500 test + demo pool per dataset | `scripts/build_splits.py --dataset <d>` | `data/<d>/{demo_pool,dev,test}.jsonl`, `meta.json` | Table 1 sizes |
-| 2 Section 3 | sensitivity grid, M=10 x P=10 x 500, 4 models x 3 datasets (12 cells) | `scripts/run_sensitivity.py --model <m> --dataset <d>` | `results/sensitivity/<m>__<d>/summary.json` (ordering, selection, r) | Table 4 cells; Table 2 rows (ours average 3 datasets, theirs 7); classification mean r = 1.09 |
-| 3 Section 4 | best-of-P ordering search, P=32, 250 dev, AG News + DBPedia, 4 models | `scripts/run_search.py --model <m> --dataset <d> --P 32 --n-dev 250` | `results/search/<m>__<d>/summary.json` (highest-dev, average, oracle, fraction, curves over P and dev size) | over 98% of oracle; plateau at 16 to 32 orderings and about 250 dev examples |
-| 4 Generation | GSM8K Section 3 on two models, GPU time | same `run_sensitivity.py` on Colab / Kaggle | `results/sensitivity/<m>__gsm8k/` | Table 4 GSM8K cells; generation mean r = 1.46 |
-| 5 GPT-5-nano | Section 3 on three datasets through the OpenAI API | backend not written; see the section above | `results/sensitivity/gpt-5-nano__<d>/` | Table 2 row, Table 4 rows |
-| 6 Report | tables and write-up | `scripts/make_tables.py` | `results/tables/sensitivity.csv`, `search.csv` | side by side with `paper/*.csv` |
-
-Rough wall-clock for phase 2 on one M4-class laptop, from the measured 46 queries/s on the 0.5B model:
-0.5B about 1.5 h for three datasets, 1.5B about 4.5 h, Llama-3.2-1B about 3.5 h, Gemma-2-2B about 6 h.
-Phase 3 on two datasets is about 90 minutes per 0.5B cell and 3 to 6 h per larger-model cell.
-
-Report outline: (1) the claim and the two sensitivity definitions; (2) what we ran against what the
-paper ran, with the frozen choices from METHODS.md; (3) Section 3 cells beside the paper's Table 4,
-and whether selection sensitivity is at least ordering sensitivity in ours; (4) Section 4 fraction of
-oracle and the two curves; (5) discrepancies and limits: no GPT-5-nano, no NYT, reduced P and dev,
-the paper's internal inconsistencies; (6) reproducibility: seeds, commands, run folders.
-
-## Team split, suggested
-
-| Who | Runs |
+| File | Contents |
 |---|---|
-| A | build all splits; Section 3 on Qwen2.5-0.5B and 1.5B, three datasets |
-| B | Section 3 on Llama-3.2-1B-Instruct and Gemma-2-2B, three datasets |
-| C | Section 4 (P=32, dev 250) on AG News and DBPedia, four models |
-| D | GSM8K on Colab: build splits, Section 3 on two models; write up |
+| `summary.json` | settings, ordering / selection / r / mean accuracy, API usage, estimated cost, run time |
+| `acc.csv` | the 10 x 10 accuracy grid; row = demonstration set, column = ordering |
+| `demo_sets.json` | the ids (rows of the AG News train split) of the 8 examples in each demonstration set |
+| `perms.json` | the 10 orderings, as permutations of the default (label-grouped, alphabetical) order |
+| `accuracy_grid.png` | the figure above |
 
-## Status
+Not in the repo: `data/` (35 MB, rebuilt by one command, seeded, byte-identical) and
+`results/openai_cache/gpt-5-nano.sqlite` (14 MB, the 50,000 raw replies). Ask us for the cache if you
+want to recompute the grid without an API key.
 
-The shortest path to both claims is in [docs/ROADMAP.md](docs/ROADMAP.md); `scripts/minimal.sh` runs it.
+## How the measurement works
 
-- [x] Library, scripts, 24 unit tests, 2 model-loading integration tests (`ICL_RUN_MODEL_TESTS=1 pytest tests/integration`)
-- [x] Smoke test: Qwen2.5-0.5B on AG News on Apple MPS, 46 queries/s (numbers at the bottom of METHODS.md)
-- [x] Required cell: GPT-5-nano on AG News through the API (`scripts/run_openai_cells.sh ag_news`)
-- [x] Free extras: Qwen2.5-0.5B on AG News and DBPedia, local
-- [ ] Optional: more models and datasets, Section 4 search, GSM8K on GPU time (see docs/ROADMAP.md)
-- [x] Report: REPORT.md, results section generated by `scripts/fill_report.py`
+1. **Data.** 500 test examples from the AG News test split, 125 per class. Demonstrations come from
+   the 120,000 training articles. Both seeded.
+2. **Demonstration sets.** M = 10 sets of k = 8 examples, 2 per class, drawn without replacement.
+3. **Orderings.** The paper's default ordering groups a set by label, labels alphabetical, articles
+   alphabetical within a label. P = 10 distinct random permutations of the 8 positions are drawn once
+   and applied to every set.
+4. **Prompt.** Eight `Article: ... / Topic: <label>` blocks, then the test article and `Topic:`. Sent to
+   the API as the user message, with one system line: reply with exactly one of World, Sports,
+   Business, Technology.
+5. **Grid.** Accuracy a[i, j] of set i under ordering j on the 500 test examples.
+6. **Sensitivities.** Ordering = mean over sets of the std over orderings. Selection = mean over
+   orderings of the std over sets. r = selection / ordering.
+
+## Reproduce
+
+Setup (Python 3.11 or newer):
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+```
+```bash
+.venv/bin/python -m pytest -q
+```
+```bash
+.venv/bin/python scripts/build_splits.py
+```
+
+The second command runs 25 tests with no network and no key. The third downloads AG News (about
+30 MB) and writes `data/ag_news/`.
+
+Key: an OpenAI **API** key with a few dollars of credit (a ChatGPT subscription is not API credit).
+Either export it, or on macOS store it once in the Keychain and the code finds it there:
+
+```bash
+export OPENAI_API_KEY=sk-...
+```
+```bash
+security add-generic-password -a "$USER" -s icl-order-replication-openai -w
+```
+
+Smoke run first (64 requests, under a cent, a few seconds), then the paper's grid:
+
+```bash
+.venv/bin/python scripts/run_sensitivity.py --M 2 --P 2 --n-test 16 --tag smoke
+```
+```bash
+.venv/bin/python scripts/run_sensitivity.py --workers 24
+```
+```bash
+.venv/bin/python scripts/plot_grid.py
+```
+
+The full grid is 50,000 requests of about 520 tokens each. At list prices for `gpt-5-nano` ($0.05 per
+million input tokens, $0.40 per million output) it costs about $1.30 and takes about 20 minutes with
+24 parallel requests, which stayed under a new account's rate limits. Watch the smoke run's
+"replies named no label" count: a high number means the label words or the completion budget need
+attention, not the model.
+
+Two things to know before comparing numbers:
+
+- **Pin `gpt-5-nano`**, the August 2025 model the paper used. Newer nano models are different models.
+- **GPT-5 models accept no temperature setting**, so a fresh run is not bit-reproducible: expect
+  numbers close to ours, not equal. Our own rerun is exact because every reply is cached in
+  `results/openai_cache/`; an interrupted run resumes from the cache for free.
